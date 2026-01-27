@@ -49,11 +49,11 @@ rlJournalStart
         ls -lah ${postgresqlDataDir}
         rlRun "postgresqlCleanup";
         rlRun "postgresqlInitDB";
-        rlRun -l "postgresqlGetDataDir";
+        rlRun 'echo "$postgresqlDataDir";'
         rlRun "postgresqlChangeAuth trust";
         rlRun -l "cat ${postgresqlDataDir}/pg_hba.conf | grep -v '^\\\s\\\?#'";
         rlRun "postgresqlStart";
-        rlRun "postgresqlGetPort";
+        rlRun "echo $postgresqlDefaultPort"
         rlRun "postgresqlPidFile";
         rlRun "postgresqlCreateDB \"anyBase\"";
         rlRun "postgresqlAddUser strangeuser commonPass";
