@@ -71,6 +71,10 @@ Set to 1 when running in collection. 0 otherwise.
 Prefix which differ RHSCL package name from distribution.
 Where no software collection set is empty.
 
+=item postgresqlPackageSuffix
+
+Suffix which differ for version package names.
+
 =item postgresqlRootDir
 
 Path prefix for RHSCL root.
@@ -264,6 +268,10 @@ postgresqlInitDB() {
         distroMajor="7";
     elif rlIsRHEL 8; then
         distroMajor="8";
+    elif rlIsRHEL 9; then
+        distroMajor="9";
+    elif rlIsRHEL 10; then
+        distroMajor="10";
     else
         distroMajor="Fedora"
     fi
@@ -281,41 +289,16 @@ postgresqlInitDB() {
             __postgresqlRun "scl enable rh-postgresql96 'postgresql-setup initdb'" 0 "Initialising the database" || \
                 __postgresqlLogTrace "Database initialization failed";
             ;;
-        rh-postgresql96-postgresql:6)
-            __postgresqlRun "scl enable rh-postgresql96 'postgresql-setup initdb'" 0 "Initialising the database" || \
-                __postgresqlLogTrace "Database initialization failed";
-            ;;
-        rh-postgresql95-postgresql:7)
-            __postgresqlRun "scl enable rh-postgresql95 'postgresql-setup initdb'" 0 "Initialising the database" || \
-                __postgresqlLogTrace "Database initialization failed";
-            ;;
-            ## ;& that isnt supported on RHEL-5 :-(
-        rh-postgresql95-postgresql:6)
-            __postgresqlRun "scl enable rh-postgresql95 'postgresql-setup initdb'" 0 "Initialising the database" || \
-                __postgresqlLogTrace "Database initialization failed";
-            ;;
-            ## ;& that isnt supported on RHEL-5 :-(
-        rh-postgresql94-postgresql:7)
-            __postgresqlRun "scl enable rh-postgresql94 'postgresql-setup initdb'" 0 "Initialising the database" || \
-                __postgresqlLogTrace "Database initialization failed";
-            ;;
-            ## ;& that isnt supported on RHEL-5 :-(
-        rh-postgresql94-postgresql:6)
-            __postgresqlRun "scl enable rh-postgresql94 'postgresql-setup initdb'" 0 "Initialising the database" || \
-                __postgresqlLogTrace "Database initialization failed";
-            ;;
-            ## ;& that isnt supported on RHEL-5 :-(
-        postgresql92-postgresql:7)
-            __postgresqlRun "scl enable postgresql92 'postgresql-setup initdb'" 0 "Initialising the database" || \
-                __postgresqlLogTrace "Database initialization failed";
-            ;;
-            ## ;& that isnt supported on RHEL-5 :-(
         postgresql:Fedora)
-            __postgresqlRun "postgresql-setup --initdb" 0 "Initialising the database" || \
+            ;&
+        postgresql:10)
+            ;&
+        postgresql:9)
+            ;&
+        postgresql:8)
+            __postgresqlRun "postgresql-setup --initdb --unit postgresql" 0 "Initialising the database" || \
                 __postgresqlLogTrace "Database initialization failed";
             ;;
-        postgresql:8)
-            ;&
         postgresql:7)
             __postgresqlRun "postgresql-setup initdb" 0 "Initialising the database" || \
                 __postgresqlLogTrace "Database initialization failed";
@@ -956,7 +939,7 @@ postgresqlLibraryLoaded() {
     ## ugly workaround, prevent hanging test due to systemctl
     export PAGER="";
     rlLogInfo "PostgreSQL library constructor."
-    if postgresqlAssertRpms postgresql rh-postgresql12 rh-postgresql10 rh-postgresql96 rh-postgresql95 rh-postgresql94 postgresql92 postgresql84; then
+    if postgresqlAssertRpms postgresql postgresql18 postgresql16 rh-postgresql13 rh-postgresql12 rh-postgresql10 rh-postgresql96 postgresql92 postgresql84; then
         __postgresqlLogDebug "Library database/postgresql is loaded."
         ## order is importatant!
         if rlIsRHEL "<6"; then
@@ -984,6 +967,10 @@ postgresqlLibraryLoaded() {
             distroMajor="7";
         elif rlIsRHEL 8; then
             distroMajor="8";
+        elif rlIsRHEL 9; then
+            distroMajor="9";
+        elif rlIsRHEL 10; then
+            distroMajor="10";
         else
             distroMajor="Fedora"
         fi
@@ -991,6 +978,27 @@ postgresqlLibraryLoaded() {
         for collection in $COLLECTIONS; do
             __postgresqlLogDebug "Looking for: '${collection}:${distroMajor}'";
             case ${collection}:${distroMajor} in
+                rh-postgresql13:7)
+                    __postgresqlLogDebug "Found collection: rh-postgresql13 on RHEL-7";
+                    readonly postgresqlCollection=1;
+                    readonly postgresqlPackagePrefix="rh-postgresql13-";
+                    if [[ $SYSPATHS == *'rh-postgresql13'* ]]; then
+                        __postgresqlLogDebug "SYSPATHS detected, overriding variables";
+                        readonly postgresqlServiceName="postgresql";
+                        readonly postgresqlLockFile="/var/lock/subsys/${postgresqlPackagePrefix}${postgresqlServiceName}";
+                    else
+                        readonly postgresqlServiceName="${postgresqlPackagePrefix}postgresql";
+                        readonly postgresqlLockFile="/var/lock/subsys/${postgresqlServiceName}";
+                    fi
+                    readonly postgresqlRootDir="/opt/rh/${postgresqlPackagePrefix%-}/root";
+                    readonly postgresqlVarDir="/var/opt/rh/${postgresqlPackagePrefix%-}";
+                    readonly postgresqlDataDir="${postgresqlVarDir}/lib/pgsql/data";
+                    readonly postgresqlDefaultPort=5432;
+                    readonly postgresqlPidFile="${postgresqlDataDir}/postmaster.pid";
+                    readonly postgresqlMainPackage="${postgresqlPackagePrefix}postgresql";
+                    readonly postgresqlLogDir="${postgresqlDataDir}/log"
+                    break;
+                ;;
                 rh-postgresql12:7)
                     __postgresqlLogDebug "Found collection: rh-postgresql12 on RHEL-7";
                     readonly postgresqlCollection=1;
@@ -1080,108 +1088,20 @@ postgresqlLibraryLoaded() {
                     break;
                 ;;
 
-                rh-postgresql95:7)
-                    __postgresqlLogDebug "Found collection: rh-postgresql95 on RHEL-7";
-                    readonly postgresqlCollection=1;
-                    readonly postgresqlPackagePrefix="rh-postgresql95-";
-                    readonly postgresqlServiceName="${postgresqlPackagePrefix}postgresql";
-                    readonly postgresqlRootDir="/opt/rh/${postgresqlPackagePrefix%-}/root";
-                    readonly postgresqlVarDir="/var/opt/rh/${postgresqlPackagePrefix%-}";
-                    readonly postgresqlDataDir="${postgresqlVarDir}/lib/pgsql/data";
-                    readonly postgresqlDefaultPort=5432;
-                    readonly postgresqlPidFile="${postgresqlDataDir}/postmaster.pid";
-                    readonly postgresqlLockFile="/var/lock/subsys/${postgresqlServiceName}";
-                    readonly postgresqlMainPackage="${postgresqlPackagePrefix}postgresql";
-                    readonly postgresqlLogDir="${postgresqlDataDir}/pg_log"
-                    break;
-                ;;
-
-                rh-postgresql95:6)
-                    __postgresqlLogDebug "Found collection: rh-postgresql95 on RHEL-6";
-                    readonly postgresqlCollection=1;
-                    readonly postgresqlPackagePrefix="rh-postgresql95-";
-                    readonly postgresqlServiceName="${postgresqlPackagePrefix}postgresql";
-                    readonly postgresqlRootDir="/opt/rh/${postgresqlPackagePrefix%-}/root";
-                    readonly postgresqlVarDir="/var/opt/rh/${postgresqlPackagePrefix%-}";
-                    readonly postgresqlDataDir="${postgresqlVarDir}/lib/pgsql/data/";
-                    readonly postgresqlDefaultPort=5432;
-                    readonly postgresqlPidFile="/var/run/${postgresqlServiceName}.pid"
-                    readonly postgresqlLockFile="/var/lock/subsys/${postgresqlServiceName}";
-                    readonly postgresqlMainPackage="${postgresqlPackagePrefix}postgresql"
-                    readonly postgresqlLogDir="${postgresqlDataDir}/pg_log"
-                    break;
-                ;;
-
-                rh-postgresql94:7)
-                    __postgresqlLogDebug "Found collection: rh-postgresql94 on RHEL-7";
-                    readonly postgresqlCollection=1;
-                    readonly postgresqlPackagePrefix="rh-postgresql94-";
-                    readonly postgresqlServiceName="${postgresqlPackagePrefix}postgresql";
-                    readonly postgresqlRootDir="/opt/rh/${postgresqlPackagePrefix%-}/root";
-                    readonly postgresqlVarDir="/var/opt/rh/${postgresqlPackagePrefix%-}";
-                    readonly postgresqlDataDir="${postgresqlVarDir}/lib/pgsql/data";
-                    readonly postgresqlDefaultPort=5432;
-                    readonly postgresqlPidFile="${postgresqlDataDir}/postmaster.pid";
-                    readonly postgresqlLockFile="/var/lock/subsys/${postgresqlServiceName}";
-                    readonly postgresqlMainPackage="${postgresqlPackagePrefix}postgresql";
-                    readonly postgresqlLogDir="${postgresqlDataDir}/pg_log"
-                    break;
-                ;;
-
-                rh-postgresql94:6)
-                    __postgresqlLogDebug "Found collection: rh-postgresql94 on RHEL-6";
-                    readonly postgresqlCollection=1;
-                    readonly postgresqlPackagePrefix="rh-postgresql94-";
-                    readonly postgresqlServiceName="${postgresqlPackagePrefix}postgresql";
-                    readonly postgresqlRootDir="/opt/rh/${postgresqlPackagePrefix%-}/root";
-                    readonly postgresqlVarDir="/var/opt/rh/${postgresqlPackagePrefix%-}";
-                    readonly postgresqlDataDir="${postgresqlVarDir}/lib/pgsql/data/";
-                    readonly postgresqlDefaultPort=5432;
-                    readonly postgresqlPidFile="/var/run/${postgresqlServiceName}.pid"
-                    readonly postgresqlLockFile="/var/lock/subsys/${postgresqlServiceName}";
-                    readonly postgresqlMainPackage="${postgresqlPackagePrefix}postgresql"
-                    readonly postgresqlLogDir="${postgresqlDataDir}/pg_log"
-                    break;
-                ;;
-
-                postgresql92:7)
-                    __postgresqlLogDebug "Found collection: rh-postgresql92 on RHEL-7";
-                    readonly postgresqlCollection=1;
-                    readonly postgresqlPackagePrefix="postgresql92-";
-                    readonly postgresqlServiceName="${postgresqlPackagePrefix}postgresql";
-                    readonly postgresqlRootDir="/opt/rh/${postgresqlPackagePrefix%-}/root";
-                    readonly postgresqlVarDir="${postgresqlRootDir}/var";
-                    readonly postgresqlDataDir="${postgresqlVarDir}/lib/pgsql/data/";
-                    readonly postgresqlDefaultPort=5432;
-                    readonly postgresqlPidFile="${postgresqlDataDir}/postmaster.pid";
-                    readonly postgresqlMainPackage="${postgresqlPackagePrefix}postgresql"
-                    readonly postgresqlLogDir="${postgresqlDataDir}/pg_log"
-                    break;
-                ;;
-
-                postgresql92:6)
-                    __postgresqlLogDebug "Found collection: rh-postgresql92 on RHEL-6";
-                    readonly postgresqlCollection=1;
-                    readonly postgresqlPackagePrefix="postgresql92-";
-                    readonly postgresqlServiceName="${postgresqlPackagePrefix}postgresql";
-                    readonly postgresqlRootDir="/opt/rh/${postgresqlPackagePrefix%-}/root";
-                    readonly postgresqlVarDir="${postgresqlRootDir}/var";
-                    readonly postgresqlDataDir="${postgresqlVarDir}/lib/pgsql/data/";
-                    readonly postgresqlDefaultPort=5432;
-                    readonly postgresqlPidFile="/var/run/${postgresqlServiceName}.${postgresqlDefaultPort}.pid";
-                    readonly postgresqlLockFile="/var/lock/subsys/${postgresqlServiceName}";    ## possible wrong
-                    readonly postgresqlMainPackage="${postgresqlPackagePrefix}postgresql"
-                    readonly postgresqlLogDir="${postgresqlDataDir}/pg_log"
-                    break;
-                ;;
-
                 *)
                     __postgresqlLogDebug "Software collection $collection is unknown."
                     ;;
             esac
         done
 
-        readonly postgresqlVersion=$(rpm -q --qf \"%{VERSION}\" ${postgresqlPackagePrefix}postgresql-server)
+        readonly postgresqlPackageSuffix=$(rpm -qa | grep "postgresql.*-server" | grep -v debug | cut -d'-' -f 1 | cut -c 11-)
+        if [ ! -z "$postgresqlPackageSuffix" ]; then
+            rlLog "Versioned package with suffix $postgresqlPackageSuffix found"
+        fi
+        readonly postgresqlVersion=$(rpm -q --qf \"%{VERSION}\" ${postgresqlPackagePrefix}postgresql${postgresqlPackageSuffix}-server)
+        rlLogInfo "postgresqlVersion: $postgresqlVersion : $(echo $postgresqlVersion | tr -d \'\")"
+        local versionNumber=$(version2number $(echo $postgresqlVersion | tr -d \'\"))
+        readonly postgresqlVersionNumber=${versionNumber#0}
 
         if [[ $postgresqlCollection -eq 0 ]]; then
             rlLogInfo "Any collection not found. Trying to match system versions.";
@@ -1191,45 +1111,28 @@ postgresqlLibraryLoaded() {
             for pgVariant in $PACKAGE $PACKAGES $(rpm -qa --qf "%{NAME}\n" | grep postgresql); do
                 case ${pgVariant}:${distroMajor} in
                     postgresql:Fedora)
-                        _postgresqlLogDebug "Found system's postgresql ${postgresqlVersion} on Fedora";
-                        _readonly postgresqlCollection=0;
-                        readonly postgresqlPackagePrefix="";
-                        readonly postgresqlServiceName="${postgresqlPackagePrefix}postgresql";
-                        readonly postgresqlRootDir="";
-                        readonly postgresqlVarDir="${postgresqlRootDir}/var";
-                        readonly postgresqlDataDir="${postgresqlVarDir}/lib/pgsql/data/";
-                        readonly postgresqlDefaultPort=5432;
-                        readonly postgresqlPidFile="${postgresqlDataDir}/postmaster.pid";
-                        readonly postgresqlLockFile="/var/lock/subsys/${postgresqlServiceName}";    ## possible wrong
-                        readonly postgresqlMainPackage="${postgresqlPackagePrefix}postgresql"
-                        local versionNumber=$(version2number $(echo $postgresqlVersion | tr -d \'\"))
-                        readonly postgresqlVersionNumber=${versionNumber#0}
-                        if [[ $postgresqlVersionNumber -ge $(version2number 10.0) ]]; then
-                            readonly postgresqlLogDir="${postgresqlDataDir}/log"
-                        else
-                            readonly postgresqlLogDir="${postgresqlDataDir}/pg_log"
-                        fi
-                        break;
-                        ;;
+                        ;&
+                    postgresql:10)
+                        ;&
+                    postgresql:9)
+                        ;&
                     postgresql:8)
                         __postgresqlLogDebug "Found system's postgresql ${postgresqlVersion} on RHEL-8 or above";
                         rlRun "rpm -q libpq" 0 "Checking libpq version"
                         readonly postgresqlCollection=0;
                         readonly postgresqlPackagePrefix="";
-                        readonly postgresqlServiceName="${postgresqlPackagePrefix}postgresql";
+                        readonly postgresqlServiceName="postgresql";
                         readonly postgresqlRootDir="";
                         readonly postgresqlVarDir="${postgresqlRootDir}/var";
                         readonly postgresqlDataDir="${postgresqlVarDir}/lib/pgsql/data/";
                         readonly postgresqlDefaultPort=5432;
                         readonly postgresqlPidFile="${postgresqlDataDir}/postmaster.pid";
                         readonly postgresqlLockFile="/var/lock/subsys/${postgresqlServiceName}";    ## possible wrong
-                        readonly postgresqlMainPackage="${postgresqlPackagePrefix}postgresql"
-                        local versionNumber=$(version2number $(echo $postgresqlVersion | tr -d \'\"))
-                        readonly postgresqlVersionNumber=${versionNumber#0}
-                        if [[ $postgresqlVersionNumber -ge $(version2number 10.0) ]]; then
-                            readonly postgresqlLogDir="${postgresqlDataDir}/log"
-                        else
+                        readonly postgresqlMainPackage="postgresql"
+                        if [[ $postgresqlVersionNumber -lt $(version2number 10.0) ]]; then
                             readonly postgresqlLogDir="${postgresqlDataDir}/pg_log"
+                        else
+                            readonly postgresqlLogDir="${postgresqlDataDir}/log"
                         fi
                         break;
                         ;;
@@ -1246,7 +1149,7 @@ postgresqlLibraryLoaded() {
                         readonly postgresqlPidFile="${postgresqlDataDir}/postmaster.pid";
                         readonly postgresqlLockFile="/var/lock/subsys/${postgresqlServiceName}";    ## possible wrong
                         readonly postgresqlMainPackage="${postgresqlPackagePrefix}postgresql"
-                        readonly postgresqlLogDir="${postgresqlDataDir}/pg_log"
+                            readonly postgresqlLogDir="${postgresqlDataDir}/pg_log"
                         break;
                         ;;
 
@@ -1263,6 +1166,22 @@ postgresqlLibraryLoaded() {
                         readonly postgresqlLockFile="/var/lock/subsys/${postgresqlServiceName}";    ## possible wrong
                         readonly postgresqlMainPackage="${postgresqlPackagePrefix}postgresql"
                         readonly postgresqlLogDir="${postgresqlDataDir}/pg_log"
+                        break;
+                        ;;
+
+                    postgresql18:10)
+                        __postgresqlLogDebug "Found system's postgresql ${postgresqlVersion} on RHEL-10 or above";
+                        readonly postgresqlCollection=0;
+                        readonly postgresqlPackagePrefix="";
+                        readonly postgresqlServiceName="postgresql";
+                        readonly postgresqlRootDir="";
+                        readonly postgresqlVarDir="${postgresqlRootDir}/var";
+                        readonly postgresqlDataDir="${postgresqlVarDir}/lib/pgsql/data/";
+                        readonly postgresqlDefaultPort=5432;
+                        readonly postgresqlPidFile="${postgresqlDataDir}/postmaster.pid";
+                        readonly postgresqlLockFile="/var/lock/subsys/${postgresqlServiceName}";    ## possible wrong
+                        readonly postgresqlMainPackage="postgresql${postgresqlPackageSuffix}"
+                        readonly postgresqlLogDir="${postgresqlDataDir}/log"
                         break;
                         ;;
 
