@@ -1118,7 +1118,7 @@ postgresqlLibraryLoaded() {
                         ;&
                     postgresql:8)
                         __postgresqlLogDebug "Found system's postgresql ${postgresqlVersion} on RHEL-8 or above";
-                        rlRun "rpm -q libpq" 0 "Checking libpq version"
+                        rlRun "rpm -q libpq" 0,1 "Checking libpq version"
                         readonly postgresqlCollection=0;
                         readonly postgresqlPackagePrefix="";
                         readonly postgresqlServiceName="postgresql";
