@@ -1,5 +1,4 @@
 #!/bin/bash
-# vim: dict=/usr/share/beakerlib/dictionary.vim cpt=.,w,b,u,t,i,k
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 #   lib.sh of /CoreOS/database/postgresql
@@ -409,6 +408,7 @@ Returns 0 if directory exists.
 =cut
 
 postgresqlCleanup() {
+    if [[ ! -d "$postgresqlDataDir" ]]; then return 0; fi
     if postgresqlStop; then
         if __postgresqlRun "[[ -d '$postgresqlDataDir' ]]" 0 "Directory ${postgresqlDataDir} have to exist!"; then
             __postgresqlLogDebug "$(rm -rfv ${postgresqlDataDir}/* | wc -l) files/directories removed";
