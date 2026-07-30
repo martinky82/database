@@ -939,7 +939,7 @@ postgresqlLibraryLoaded() {
     ## ugly workaround, prevent hanging test due to systemctl
     export PAGER="";
     rlLogInfo "PostgreSQL library constructor."
-    if postgresqlAssertRpms postgresql postgresql18 postgresql16 rh-postgresql13 rh-postgresql12 rh-postgresql10 rh-postgresql96 postgresql92 postgresql84; then
+    if postgresqlAssertRpms postgresql postgresql18 postgresql17 postgresql16 rh-postgresql13 rh-postgresql12 rh-postgresql10 rh-postgresql96 postgresql92 postgresql84; then
         __postgresqlLogDebug "Library database/postgresql is loaded."
         ## order is importatant!
         if rlIsRHEL "<6"; then
@@ -1111,6 +1111,12 @@ postgresqlLibraryLoaded() {
             for pgVariant in $PACKAGE $PACKAGES $(rpm -qa --qf "%{NAME}\n" | grep postgresql); do
                 case ${pgVariant}:${distroMajor} in
                     postgresql:Fedora)
+                        ;&
+                    postgresql18:Fedora)
+                        ;&
+                    postgresql17:Fedora)
+                        ;&
+                    postgresql16:Fedora)
                         ;&
                     postgresql:10)
                         ;&
